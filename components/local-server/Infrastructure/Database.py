@@ -15,6 +15,12 @@ class Database:
 
     def addWalkie(self, toAdd):
         self._walkies.append(toAdd)
+
+    def existsWalkie(self, walkieId):
+        for walkie in self._walkies:
+            if walkie.id == walkieId:
+                return True
+        return False
     
     def removeWalkie(self, toRemove):
         self._walkies.remove(toRemove)
@@ -31,4 +37,5 @@ class Database:
     def removeRole(self, toAdd):
         self._roles.remove(toAdd)
         
-    
+    def getUsersCount(self):
+        return self._users.count()

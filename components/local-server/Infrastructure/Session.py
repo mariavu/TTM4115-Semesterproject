@@ -1,9 +1,50 @@
 import stmpy
+import uuid
+from enum import Enum
+
+class SESSION_STATUS(enum):
+    PENDING_REGISTRATION = 0
+    PENDING_LOGIN = 1
+    AUTHENTICATED = 2
+    REGISTERED = 3
 
 class Session:
-    def __init__(self):
-        pass
+    #Walkie
+    #User
+    #JoinedChannels
+    #Authenticated
 
+    def __init__(self, walkie, userName, initialStatus):
+        self._id = uuid.uuid4() 
+        self._walkie = walkie
+        self._userName = userName
+        self._authenticated = False
+        self._joinedChannels = []
+        self._status = initialStatus
+
+
+    
+    @property
+    def id(self):
+        return self._id
+    @property
+    def walkie(self):
+        return self._walkie
+    @property
+    def userName(self):
+        return self._userName
+    @property
+    def status(self):
+        return self._status
+    @property
+    def joinedChannels(self):
+        return self._joinedChannels
+
+    def setStatus(self, newStatus):
+        if newStatus not in SESSION_STATUS:
+            raise Exception("Invalid status set")
+        self._status = newStatus
+"""
 #states:
     #idle
     #validation
@@ -69,10 +110,11 @@ def handleResponse(self, result):
     elif result == True:
         #sendMessage()
 
+
 def sendMessage(self):
-    
+   pass 
 
 def sendError(self):
+    pass
     
-    
-    
+"""

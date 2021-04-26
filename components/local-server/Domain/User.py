@@ -1,10 +1,9 @@
 class User:
 
-    def __init__(self, id, username, name, password, roles,newMessages):
+    def __init__(self, id, username, name, roles,newMessages):
         self._id = id
         self._username = username
         self._name = name
-        self._password = password
         self._newMesages = newMessages
         self._roles = roles
 
@@ -17,9 +16,6 @@ class User:
     @property
     def name(self):
         return self._name
-    @property
-    def password(self):
-        return self._password
     @property
     def newMessages(self):
         return self._newMesages
