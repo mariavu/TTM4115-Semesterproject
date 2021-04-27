@@ -7,6 +7,7 @@ def speak(text):
     engine = pyttsx3.init()
     engine.say(text)
     engine.runAndWait()
+    engine.stop()
 
 def get_audio():
     r = sr.Recognizer()
@@ -29,28 +30,30 @@ def record_p(text):
     text=text.lower()
     textlist=text.split()
     for word in textlist:
-        if word =="channel":
+        if word =="channel" or word=="Channel":
             return textlist[textlist.index(word)+1]
 
     
-WAKE="hey tech monkey"
+WAKE="monkey"
 
-while True:
-    print("Listening")
-    
-    text = get_audio()
-    if text.count(WAKE) > 0:
-        speak("I am ready")
+def voice_loop():
+        print("Listening")
         text = get_audio()
+        if text.count(WAKE) > 0:
+            speak("I am ready")
+            text = get_audio()
 
-        to_send = ["send to"]
-        for phrase in to_send:
-            if phrase in text:
-                a=record_p(text)
-                if a==None:
-                    speak("I don't understand")  
-                else:
-                    if(a=="one"):
-                        a=1
-                    speak(str(a))
-                    
+            to_send = ["send to"]
+            for phrase in to_send:
+                if phrase in text:
+                    a=record_p(text)
+                    if a==None:
+                        speak("I don't understand")  
+                    else:
+                        if(a=="one"):
+                            a=1
+                        speak("ok")
+                        return "channel_"+str(a),1
+        return "channel_0",0
+
+voice_loop()

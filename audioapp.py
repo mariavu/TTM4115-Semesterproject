@@ -61,13 +61,13 @@ class auditioplay():
         def callback(in_data, frame_count, time_info, status):
             data = wf.readframes(frame_count)
             return (data, pyaudio.paContinue)
-
+        #print(str(p.get_format_from_width(wf.getsampwidth()))+"    "+str(wf.getnchannels())+"   "+str(wf.getframerate()))
         # open stream using callback (3)
         stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
                         channels=wf.getnchannels(),
                         rate=wf.getframerate(),
                         output=True,
-                        stream_callback=callback)
+                        stream_callback=callback,output_device_index=5)
 
         # start the stream (4)
         stream.start_stream()
@@ -87,15 +87,16 @@ class auditioplay():
 #p=auditiorecord("haha")
 #p.record(2)
 #p=auditioplay("haha")
-#p.play()
-
+#p.play("mic_results.wav")
+"""
 audio = pyaudio.PyAudio()
 
 info = audio.get_host_api_info_by_index(0)
 numdevices = info.get('deviceCount')
 for i in range(0, numdevices):
-        if (audio.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+        if (audio.get_device_info_by_host_api_device_index(0, i).get('maxOutputChannels')) > 0:
             print("Input Device id ", i, " - ", audio.get_device_info_by_host_api_device_index(0, i).get('name'))
             print(audio.get_device_info_by_host_api_device_index(0,i))
             #print(audio.get_device_info_by_host_api_device_index(0,i).get('maxInputChannels'))
 print("-------------------------------------------------------------")
+"""
