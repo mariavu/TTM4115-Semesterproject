@@ -19,7 +19,7 @@ class Session:
         self._walkie = walkie
         self._userName = userName
         self._authenticated = False
-        self._joinedChannels = []
+        self._joinedChannels = {}
         self._status = initialStatus
 
 

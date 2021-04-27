@@ -31,3 +31,6 @@ class GroupChannel(Channel): #This class inherits from Channel and extends its f
             self._participants.append(user.id)
             return
         raise Exception("Participant does not have a role with permission.")
+
+    def hasParticipant(self, userId):
+        return userId in self._participants

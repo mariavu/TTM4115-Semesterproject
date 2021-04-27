@@ -1,20 +1,20 @@
 class Database:
     def __init__(self):
-        self._walkies = []
-        self._users = []
-        self._channels = []
-        self._roles = []
+        self._walkies = {}
+        self._users = {}
+        self._channels = {}
+        self._roles = {}
 
     #Only need add/remove methods; we are esentially following the 'ActiveRecord'-pattern, except we never actually persist any data.
 
     def addUser(self, toAdd):
-        self._users.append(toAdd)
+        self._users[toAdd.id] = toAdd
     
     def removeUser(self, toRemove):
-        self._users.remove(toRemove)
+        del self._users[toRemove.id]
 
     def addWalkie(self, toAdd):
-        self._walkies.append(toAdd)
+        self._walkies[toAdd.id] = toAdd
 
     def existsWalkie(self, walkieId):
         for walkie in self._walkies:
@@ -23,19 +23,23 @@ class Database:
         return False
     
     def removeWalkie(self, toRemove):
-        self._walkies.remove(toRemove)
+        del self.__walkies[toRemove.id]
     
     def addChannel(self, toAdd):
-        self._channels.append(toAdd)
+        self._channels[toAdd] = toAdd
     
     def removeChannel(self, toRemove):
-        self._channels.remove(toRemove)
+        del self._channels[toRemove.id]
     
     def addRole(self, toAdd):
-        self._roles.append(toAdd)
+        self._roles[toAdd] = toAdd
     
-    def removeRole(self, toAdd):
-        self._roles.remove(toAdd)
+    def removeRole(self, toRemove):
+        del self._roles[roRemove.id]
         
     def getUsersCount(self):
-        return self._users.count()
+       # return self._users.count()
+        return len(self._users))
+
+    def findChannel(self, channelId):
+        return self._channels[channelId]
