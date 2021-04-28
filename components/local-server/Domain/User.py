@@ -1,6 +1,6 @@
 class User:
 
-    def __init__(self, id, username, name, roles,newMessages):
+    def __init__(self, id, username, name, roles, newMessages):
         self._id = id
         self._username = username
         self._name = name
@@ -25,4 +25,4 @@ class User:
         
     @name.setter
     def name(self, value):
-        self._name = value
+        self._name = valueself.mqtt_client.loop_start()

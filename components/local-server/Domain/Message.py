@@ -5,7 +5,7 @@ class Message:
         self._sender = sender
         self._to = to
         self._length = length
-        self._contents = contents
+        self._data = contents
         self._timestamp = timestamp
     
     @property
@@ -27,7 +27,7 @@ class Message:
         return self._contents
     @property
     def timestamp(self):
-        return self._timestamp
+        return self._data
     
     #from <UserId>
     #to <ChannelId>

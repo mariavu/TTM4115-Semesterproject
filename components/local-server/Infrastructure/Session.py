@@ -1,8 +1,7 @@
 import stmpy
-import uuid
 from enum import Enum
 
-class SESSION_STATUS(enum):
+class SESSION_STATUS(Enum):
     PENDING_REGISTRATION = 0
     PENDING_LOGIN = 1
     AUTHENTICATED = 2
@@ -15,7 +14,6 @@ class Session:
     #Authenticated
 
     def __init__(self, walkie, userName, initialStatus):
-        self._id = uuid.uuid4() 
         self._walkie = walkie
         self._userName = userName
         self._authenticated = False
@@ -23,10 +21,6 @@ class Session:
         self._status = initialStatus
 
 
-    
-    @property
-    def id(self):
-        return self._id
     @property
     def walkie(self):
         return self._walkie
@@ -40,10 +34,13 @@ class Session:
     def joinedChannels(self):
         return self._joinedChannels
 
-    def setStatus(self, newStatus):
-        if newStatus not in SESSION_STATUS:
-            raise Exception("Invalid status set")
-        self._status = newStatus
+    @property
+    def token(self):
+        return self._token
+
+    def setToken(self, token):
+        self._token = token
+        self._status = SESSION_STATUS.AUTHENTICATED
 """
 #states:
     #idle

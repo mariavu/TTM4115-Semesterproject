@@ -1,6 +1,5 @@
 class Database:
     def __init__(self):
-        self._walkies = {}
         self._users = {}
         self._channels = {}
         self._roles = {}
@@ -12,18 +11,6 @@ class Database:
     
     def removeUser(self, toRemove):
         del self._users[toRemove.id]
-
-    def addWalkie(self, toAdd):
-        self._walkies[toAdd.id] = toAdd
-
-    def existsWalkie(self, walkieId):
-        for walkie in self._walkies:
-            if walkie.id == walkieId:
-                return True
-        return False
-    
-    def removeWalkie(self, toRemove):
-        del self.__walkies[toRemove.id]
     
     def addChannel(self, toAdd):
         self._channels[toAdd] = toAdd
@@ -39,7 +26,7 @@ class Database:
         
     def getUsersCount(self):
        # return self._users.count()
-        return len(self._users))
+        return len(self._users)
 
     def findChannel(self, channelId):
         return self._channels[channelId]

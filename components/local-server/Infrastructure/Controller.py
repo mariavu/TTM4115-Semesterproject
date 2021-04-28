@@ -6,28 +6,10 @@ import json
 from threading import Thread
 from Infrastructure.Session import Session, SESSION_STATUS
 from Domain.User import User
-
+from Config.Constants import AUTH_SERVER_MESSAGE, WALKIE_MESSAGE, ERROR_CODES
 from enum import Enum
 
-class ERROR_CODES(enum):
-    SESSION_EXISTS = 0
-    INVALID_USERNAME_OR_PASSWORD = 1
-    UNKNOWN_MESSAGE_TYPE = 2
-    WALKIE_IN_USE = 3
-    USER_ALREADY_LOGGED_IN = 4
-    UNAUTHORIZED = 5
-    UNKNOWN_CHANNEL = 6
 
-class AUTH_SERVER_MESSAGE(enum):
-    LOGIN = 100
-    REGISTER = 101
-   # REGISTER_LOCAL_SERVER = 102 (Not necessary)
-
-class WALKIE_MESSAGE(enum):
-    LOGIN = 0
-    REGISTER = 1
-    LIST_MESSAGES = 2
-    
 
 
 
@@ -38,15 +20,16 @@ class Controller:
     # Setup
 
     def registerWithAuthServer(self):
-        #TODO send MQTT message to establish connection with authentication server and sync.
+        self._authenticated = True #TODO send MQTT message to establish connection with authentication server and sync.
         pass
 
     def start(self):
         self._mqtt.connect(self._host, self._port)
-        self._mqtt.subscribe(f"{self._rootTopic}/{self._id}/request") #Request topic
-        self._mqtt.subscribe(f"{self._rootTopic}/{self._id}/response")
-
+        self._mqtt.subscribe(f"{self._rootTopic}/local_server/{self._id}/req") #Request topic
+        self._mqtt.subscribe(f"{self._rootTopic}/local_server/{self._id}/res")
         self.registerWithAuthServer()
+        self._mqtt.loop_start()
+        
 
     def __init__(self, db, host, port, id, rootTopic):
         self._db = db
@@ -60,18 +43,21 @@ class Controller:
         self._rootTopic = rootTopic
         self._sessions = {}
         
-        self._messageHandlers = {'joinChannel' : self.handleJoinChannel} #This dictionary will contain all message_type => message_handler()
-
+        self._messageHandlers = {
+            WALKIE_MESSAGE.JOIN_CHANNEL : self.handleJoinChannel,
+            WALKIE_MESSAGE.LOGIN: self.handleLoginRequest,
+            WALKIE_MESSAGE.REGISTER: self.handleRegisterRequest
+            }
   
 
 
     # Event handlers
 
-    def onConnect(self):
+    def onConnect(self, client, userdata, flags, rc):
 
         pass
 
-    def onMessage(self, message):
+    def onMessage(self, client, userdata, message):
         #TODO Determine if message is from authentication server or walkie and forward to handleRequest/handleResponse
         pass
 
@@ -122,18 +108,21 @@ class Controller:
 
         newSession = self.createSession(SESSION_STATUS.PENDING_LOGIN, walkie, username)
         self._sessions.append(newSession)
-
         self.sendToAuthServer(AUTH_SERVER_MESSAGE.LOGIN, {"walkie": walkie, "username" : username, "password" : password})
     
 
     def handleLoginResponse(self, message): #Response from auth_server
+        walkie = message.get("walkie")
+        
         if message.get("error") is not None:
-            self.sendErrorResponse(message.get("session"), ERROR_CODES.INVALID_USERNAME_OR_PASSWORD)
+            self.sendErrorResponse(walkie, ERROR_CODES.INVALID_USERNAME_OR_PASSWORD)
+        
+        token = message.get("token")
 
-        session = self._sessions.get((message.get("session")))
-        session.authenticated = True
+        session = self._sessions.get(walkie)
+        session.setToken(token)
 
-        self.sendToWalkie(session.id, WALKIE_MESSAGE.LOGIN, {status: 200}) # 200 OK
+        self.sendToWalkie(session.id, WALKIE_MESSAGE.LOGIN, {token: message.get("token")})
 
         
 
@@ -174,7 +163,7 @@ class Controller:
         pass
 
     def handleGetMessage(self, message):
-        channel = self.d
+        channel = self.id
         pass
 
 
@@ -201,16 +190,26 @@ class Controller:
      # Helper methods
     
     def sendToAuthServer(self, message_type, message):
-        # TODO Implement
-        return
-    
-    def sendToWalkie(self, session, message_type, message):
-        # TODO Implement
-        return
+        message["command"] = message_type
+        self.sendToMQTT(self.getAuthTopic(), message)
 
-    def sendErrorResponse(self, session, error):
-        # TODO convert error to Payload and dispatch to MQTT.
-        return
+    
+    def sendToMQTT(self, topic, payload):
+        self._mqtt.publish(topic, json.dumps(payload))
+
+    def getWalkieTopic(self, walkie):
+        return f"{self._rootTopic}/walkie/{walkie}"
+
+    def getAuthTopic(self):
+        return f"{self._rootTopic}/auth_server"
+
+    def sendToWalkie(self, walkie, message_type, message):
+        message["command"] = message_type
+        self.sendToMQTT(self.getWalkieTopic(walkie), message)
+
+
+    def sendErrorResponse(self, walkie, error):
+        self.sendToMQTT(self.getWalkieTopic(walkie), {error: error})
 
     def ensureAuthenticated(self, sessionId):
         for session in self._sessions.values():
