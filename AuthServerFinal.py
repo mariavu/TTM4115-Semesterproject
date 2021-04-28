@@ -57,7 +57,7 @@ class AuthenticationServer_MQTT:
     def on_connect(self, client, userdata, flags, rc):
         self._logger.debug('MQTT connected to {}'.format(client))
         self.mqtt_client.subscribe(self.input)
-        self.mqtt_client.subscribe(self.output)
+        #self.mqtt_client.subscribe(self.output)
 
     """
         The MQTT commands are listened to and appropriate actions are taken for each.
