@@ -11,8 +11,8 @@ MQTT_BROKER = 'mqtt.item.ntnu.no'
 MQTT_PORT = 1883
 
 #Define MQTT topics
-MQTT_TOPIC_INPUT = 'ttm4115/team_5/authentication/requests'
-MQTT_TOPIC_OUTPUT = 'ttm4115/team_5/authentication/responses'
+MQTT_TOPIC_INPUT = 'ttm4115/team_5/semesterprosjekt/auth_server'
+MQTT_TOPIC_OUTPUT = 'ttm4115/team_5/semesterprosjekt/local_server/1/res'
 
 class AuthenticationServer_MQTT:
     """
