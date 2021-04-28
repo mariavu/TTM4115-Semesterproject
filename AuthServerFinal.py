@@ -28,11 +28,11 @@ class AuthenticationServer_MQTT:
 
         #Database for all registered users
         self.registeredUsers = {
-            "user1": ["Name1", "Password1", "ID1", "Hospital1"],
-            "Brad123": ["Brad McBradface", "123abc", "12345678901", "St. Olavs"],
-            "Nora": ["Nora Syltetøy", "SyltetøyErGodt", "908976453", "St. Olavs"],
-            "Jo": ["Jo Ho", "Godteri", "85733727281", "St. Olavs"],
-            "Ricola": ["Ricola Drops", "Hals", "727274615", "St. Olavs"]
+            "user1": ["Name1", "Password1", "WalkieId", "Role1"],
+            "Brad123": ["Brad McBradface", "123abc", "DeviceID2", "Doctor"],
+            "Nora": ["Nora Syltetøy", "SyltetøyErGodt", "DeviceID3", "Nurse"],
+            "Jo": ["Jo Ho", "Godteri", "DeviceID4", "Nurse"],
+            "Ricola": ["Ricola Drops", "Hals", "DeviceID5",  "Doctor"]
         }
         #Database for all registered walkie talkies
         self.registeredWalkies = {
@@ -48,10 +48,10 @@ class AuthenticationServer_MQTT:
         }
         #Database for all logged in users
         self.loggedInUsers ={
-            "user1": ["Password1", "DeviceID1", "token"],
-            "Brad123": ["123abc", "DeviceID2", "D1BBBF7E7BB55E62ED4AC9CDD9B74645"],
-            "Nora": ["SyltetøyErGodt", "DeviceID3", "F173D9195C86E93B64C156E2436CC2AB"],
-            "Jo": ["Godteri", "DeviceID4", "A1A177F31F1F2C39B887548A5DA9BFA6"],
+            "user1": ["Password1", "DeviceID1", "token", "role"],
+            "Brad123": ["123abc", "DeviceID2", "D1BBBF7E7BB55E62ED4AC9CDD9B74645","Doctor"],
+            "Nora": ["SyltetøyErGodt", "DeviceID3", "F173D9195C86E93B64C156E2436CC2AB", "Nuse"],
+            "Jo": ["Godteri", "DeviceID4", "A1A177F31F1F2C39B887548A5DA9BFA6", "Nurse"],
         }
 
     def on_connect(self, client, userdata, flags, rc):
@@ -76,19 +76,20 @@ class AuthenticationServer_MQTT:
 
         command = payload.get('command')
         
-        if command == 100:
+        if command == 101:
             username = payload.get('username')
             name = payload.get('name')
             password = payload.get('password')
-            userId = payload.get('id')
-            hospital = payload.get('hospital')
-            self.driver.send('registrationRequest','Authentication_server', args=[username, name, password, userId, hospital])
+            walkieId = payload.get('walkie')
+            role = payload.get('role')
+            self.driver.send('registrationRequest','Authentication_server', args=[username, name, password, walkieId, role])
             
-        if command == 101:
+        if command == 100:
             username = payload.get('username')
             password = payload.get('password')
-            walkieId = payload.get('walkieId')
-            self.driver.send('loginRequest', 'Authentication_server', args = [username, password, walkieId])
+            walkieId = payload.get('walkie')
+            role = payload.get('role')
+            self.driver.send('loginRequest', 'Authentication_server', args = [username, password, walkieId, role])
 
         """
             When a log_out command is received it checks if there are any users with that username logged in already.
@@ -105,7 +106,7 @@ class AuthenticationServer_MQTT:
                 self.registeredWalkies[walkieId][2] = None
                 self.driver.send('log_out','Authentication_server')
             except Exception as err:
-                self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "logout_unsuccessful", "username": username, "error_message": "user not logged in"}))
+                self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "logout_unsuccessful", "username": username, "error": "user not logged in"}))
                 return
 
         """
@@ -115,9 +116,9 @@ class AuthenticationServer_MQTT:
         if command == "delete_user":
             username = payload.get('username')
             if username not in self.registeredUsers:
-                self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "delete_unsuccessful", "username": username, "error_message": "no such user registered"}))
+                self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "delete_unsuccessful", "username": username, "error": "no such user registered"}))
             elif username not in self.loggedInUsers:
-                self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "delete_unsuccessful", "username": username, "error_message": "no such user logged in"}))
+                self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "delete_unsuccessful", "username": username, "error": "no such user logged in"}))
             else:
                 values = self.loggedInUsers.get(username)
                 walkieId = values[1]
@@ -146,17 +147,17 @@ class AuthenticationServer_Sender:
     def __init__(self, authMqtt):
         self.authMqtt = authMqtt
 
-    def sendMessageReg(self):
-        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": 101}))
+    def sendMessageReg(self, username, name, password, walkieId, role):
+        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": 101, "walkie": walkieId, "name": name, "role": role}))
 
-    def sendErrorRegistration(self, error):
-        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": 101, "error_message":error}))
+    def sendErrorRegistration(self, error, walkieId):
+        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": 101, "error":error, "walkie":walkieId}))
 
-    def sendMessageLogin(self, username, password, walkieId, token):
-        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": 100, "username":username, "token":token}))
+    def sendMessageLogin(self, username, password, walkieId, token, role):
+        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": 100, "walkie":walkieId, "token":token}))
 
-    def sendErrorLogin(self, error):
-        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": 100, "error_message": error}))
+    def sendErrorLogin(self, error, walkieId):
+        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": 100, "error": error, "walkie":walkieId}))
 
     def sendLogOut(self):
         self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "logout_successful"}))
@@ -168,29 +169,29 @@ class AuthenticationServer_Sender:
         A counter is used to validate the passed registration credentials. A new dictionary for the newly registered user is made,
         and it is compared with the already registered users. If one or more fields in the dictionaries are the same, the registration fails.
     """
-    def validateRegistration(self, username, name, password, userId, hospital):
-        counterBad = 0
+    def validateRegistration(self, username, name, password, walkieId, role):
+        usernameInUse = False
         newUser = {
-            username: [name, password, userId, hospital]
+            username: [name, password, walkieId, role]
         }
-        for x, y in self.authMqtt.registeredUsers.items():
-            for key, value in newUser.items():
+        error = 0
+        for x in self.authMqtt.registeredUsers.items():
+            for key in newUser.items():
                 if key == x:
-                    counterBad += 1
+                    usernameInUse = True
+                    error = 7
 
-                if value[2] == y[2]:
-                    counterBad += 1
 
-        if counterBad != 0:
-            self.authMqtt.driver.send('notValidReg', 'Authentication_server', args=[7])
+        if usernameInUse:
+            self.authMqtt.driver.send('notValidReg', 'Authentication_server', args=[error,walkieId])
         else:
-            self.authMqtt.driver.send('validReg', 'Authentication_server', args=[username, name, password, userId, hospital])
+            self.authMqtt.driver.send('validReg', 'Authentication_server', args=[username, name, password, walkieId, role])
 
     """
         Adds the user that wants to register to the "database"
     """       
-    def registration(self, username, name, password, userId, hospital):
-        self.authMqtt.registeredUsers.update({username: [name, password, userId, hospital]})
+    def registration(self, username, name, password, walkieId, role):
+        self.authMqtt.registeredUsers.update({username: [name, password, walkieId, role]})
 
     """
         Validates if the user can log in or not by checking if the username and password given matches a user in the database.
@@ -198,7 +199,7 @@ class AuthenticationServer_Sender:
         If a user is not valid the driver is notified.
         Token is a unique string of hexadecimal numbers used for message authentication.
     """ 
-    def validateLogin(self, username, password, walkieId):
+    def validateLogin(self, username, password, walkieId, role):
         sentValid = False
         token = ""
         error = None
@@ -216,19 +217,19 @@ class AuthenticationServer_Sender:
 
             for x, y in self.authMqtt.registeredUsers.items():
                 if x == username and y[1] == password:
-                    self.authMqtt.driver.send('validLog', 'Authentication_server', args=[username, password, walkieId, token])
+                    self.authMqtt.driver.send('validLog', 'Authentication_server', args=[username, password, walkieId, token, role])
                     sentValid = True
                 else:
                     error = 1
             
         if not sentValid:
-            self.authMqtt.driver.send('notValidLog', 'Authentication_server', args = [error])
+            self.authMqtt.driver.send('notValidLog', 'Authentication_server', args = [error, walkieId])
             
     """
         Adds the user to the database of logged in users and updates the database of registered walkie talkies to contain the current user field of the user logged in.
     """ 
-    def login(self, username, password, walkieId, token):
-        self.authMqtt.loggedInUsers.update({username: [password, walkieId, token]})
+    def login(self, username, password, walkieId, token, role):
+        self.authMqtt.loggedInUsers.update({username: [password, walkieId, token, role]})
         self.authMqtt.registeredWalkies[walkieId][2] = username
 
 t0 = {
@@ -281,7 +282,7 @@ t8 = {
     'trigger': 'validReg',
     'source': 'validating_registration',
     'target': 'idle',
-    'effect': 'registration(*); sendMessageReg'}
+    'effect': 'registration(*); sendMessageReg(*)'}
 
 idle = {'name': 'idle'}
 
