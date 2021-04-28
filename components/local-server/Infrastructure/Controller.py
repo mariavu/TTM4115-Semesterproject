@@ -3,14 +3,13 @@ import stmpy
 import logging
 import json
 
+
+
 from threading import Thread
 from Infrastructure.Session import Session, SESSION_STATUS
 from Domain.User import User
-from Config.Constants import AUTH_SERVER_MESSAGE, WALKIE_MESSAGE, ERROR_CODES
-from enum import Enum
 
-
-
+from Config.Constants import AUTH_SERVER_MESSAGE, ERROR_CODES, WALKIE_MESSAGE
 
 
 
@@ -43,23 +42,47 @@ class Controller:
         self._rootTopic = rootTopic
         self._sessions = {}
         
-        self._messageHandlers = {
-            WALKIE_MESSAGE.JOIN_CHANNEL : self.handleJoinChannel,
-            WALKIE_MESSAGE.LOGIN: self.handleLoginRequest,
-            WALKIE_MESSAGE.REGISTER: self.handleRegisterRequest
+        self._walkieHandlers = {
+            WALKIE_MESSAGE.JOIN_CHANNEL.value : self.handleJoinChannel,
+            WALKIE_MESSAGE.LOGIN.value: self.handleLoginRequest,
+            WALKIE_MESSAGE.REGISTER.value: self.handleRegisterRequest
             }
+        
+        self._authHandlers = {
+            AUTH_SERVER_MESSAGE.REGISTER.value: self.handleRegisterResponse,
+            AUTH_SERVER_MESSAGE.LOGIN.value: self.handleLoginResponse,
+        }
   
 
 
     # Event handlers
 
     def onConnect(self, client, userdata, flags, rc):
-
+        print("connected")
         pass
 
     def onMessage(self, client, userdata, message):
-        #TODO Determine if message is from authentication server or walkie and forward to handleRequest/handleResponse
-        pass
+        print("Decoding message")
+        try:
+            payload = json.loads(message.payload.decode("utf-8"))
+            command = payload.get("command")
+            if command in self._authHandlers:
+                self._authHandlers[command](payload)
+                return
+            if command in self._walkieHandlers:
+                try:
+                    self._walkieHandlers[command](payload)
+                except Exception as error:
+                    print(error)
+                    print("We here")
+                    self.sendErrorResponse(payload.get("walkie"), error.args[0])
+
+                return
+            raise Exception(ERROR_CODES.UNKNOWN_MESSAGE_TYPE)
+        except Exception as err:
+            print("Error: ", err)
+            return
+        print("Message processed without error")
 
    
 
@@ -67,24 +90,29 @@ class Controller:
     # Message Handlers
 
     def handleRegisterRequest(self, message):
-        walkie = message.get("walkieId")
+        walkie = message.get("walkie")
         username = message.get("username")
         name = message.get("name")
         password = message.get("password")
+        role = message.get("role")
+        
         self.ensureWalkieNotInUse(walkie)
+        self.ensureRoleExists(role)
+        self.createSession(SESSION_STATUS.PENDING_REGISTRATION, walkie, username)
 
-        newSession = self.createSession(SESSION_STATUS.PENDING_REGISTRATION, walkie, user)
-        self._sessions.append(newSession)
-
-        self.sendToAuthServer(AUTH_SERVER_MESSAGE.REGISTER,{'walkie': walkie, 'username': username, 'name': name, 'password': password})
+        self.sendToAuthServer(AUTH_SERVER_MESSAGE.REGISTER,{'walkie': walkie, 'username': username, 'name': name, 'password': password, 'role' : role})
 
 
     def handleRegisterResponse(self, message):
         if message.get("error") is not None:
-            self.sendErrorResponse(message.get("session"), message.get("error"))
+            self.sendErrorResponse(message.get("walkie"), message.get("error"))
+            return
+
+        print("Handling register response")
     
-        session = self._sessions.get((message.get("session")))
-        session.setStatus(SESSION_STATUS.REGISTERED)
+        session = self._sessions.get(message.get("walkie"))
+
+        session.setRegistered()
 
 
         name = message.get("name")
@@ -94,12 +122,12 @@ class Controller:
         newUserId = f"USER-{self._db.getUsersCount() + 1}"
 
         self._db.addUser(User(newUserId, session.userName, name, [role], []))
-        self.sendToWalkie(session.id, WALKIE_MESSAGE.REGISTER, {status: 200})
+        self.sendToWalkie(session.walkie, WALKIE_MESSAGE.REGISTER, {'status': 200})
         
 
 
     def handleLoginRequest(self, message): #Request from walkie
-        walkie = message.get("walkieId")
+        walkie = message.get("walkie")
         username = message.get("username")
         password = message.get("password")
 
@@ -124,12 +152,19 @@ class Controller:
 
         self.sendToWalkie(session.id, WALKIE_MESSAGE.LOGIN, {token: message.get("token")})
 
+    def ensureValidToken(self, walkie, token):
+        session = self._sessions.get(walkie)
+        if session is None:
+            raise Exception(ERROR_CODES.INVALID_TOKEN)
+        if session.token != token:
+            raise Exception(ERROR_CODES.INVALID_TOKEN)
         
-
+    def ensureRoleExists(self, role):
+        pass #TODO
 
     def handleJoinChannel(self, message): #{command: JOIN_CHANNEL, channel: <Id>, session: <Id>}
         channel = self._db.findChannel(message.get("channel"))
-        session = self._sessions.get(message.get("session"))
+        session = self._sessions.get(message.get("walkie"))
 
         if channel is None:
             raise Exception(ERROR_CODES.UNKNOWN_CHANNEL)
@@ -143,7 +178,7 @@ class Controller:
 
     def handleLeaveChannel(self, message): #{command: LEAVE_CHANNEL, channel: <Id>, session: <Id>}
         channel = self._db.findChannel(message.get("channel"))
-        session = self._sessions.get(message.get("session"))
+        session = self._sessions.get(message.get("walkie"))
         if channel is None:
             raise Exception(ERROR_CODES.UNKNOWN_CHANNEL)
     
@@ -157,7 +192,7 @@ class Controller:
 
     def handleListMessages(self, message): #{command: LIST_MESSAGES, channel: <Id>}
         channel = self._db.findChannel(message.get("channel"))
-        session = self._sessions.get(message.get("session"))
+        session = self._sessions.get(message.get("walkie"))
         # TODO Send to 
         self.sendToWalkie(session, WALKIE_MESSAGE.LIST_MESSAGES,{channel: channel.id, messages: message})
         pass
@@ -167,30 +202,16 @@ class Controller:
         pass
 
 
-    def handleRequest(self, message): #from walkie  #{error: {code: <CODE>, description: <string>}}
-
-        try:
-            #TODO Convert message to JSON and pass it to message handlers
-            if(message.type in self._messageHandlers):
-                if not (message.type in [WALKIE_MESSAGE.LOGIN, WALKIE_MESSAGE.REGISTER]):
-                    self.ensureAuthenticated(message.get("session"))
-                
-                self._messageHandlers.get(message.type)(message)
-            else:
-                raise Exception(ERROR_CODES.UNKNOWN_MESSAGE_TYPE)
-        except Exception as exception:
-            self.sendErrorResponse(message.get("session"), exception)
-            
-
     def handleResponse(self, message): #from auth. server
-        # TODO 
         pass
     
 
      # Helper methods
     
+
+    
     def sendToAuthServer(self, message_type, message):
-        message["command"] = message_type
+        message["command"] = message_type.value
         self.sendToMQTT(self.getAuthTopic(), message)
 
     
@@ -204,21 +225,21 @@ class Controller:
         return f"{self._rootTopic}/auth_server"
 
     def sendToWalkie(self, walkie, message_type, message):
-        message["command"] = message_type
+        message["command"] = message_type.value
         self.sendToMQTT(self.getWalkieTopic(walkie), message)
 
 
     def sendErrorResponse(self, walkie, error):
-        self.sendToMQTT(self.getWalkieTopic(walkie), {error: error})
+        self.sendToMQTT(self.getWalkieTopic(walkie), {'error': error})
 
-    def ensureAuthenticated(self, sessionId):
-        for session in self._sessions.values():
-            if session.id == sessionId:
-                raise Exception(ERROR_CODES.UNAUTHORIZED)
+    def ensureAuthenticated(self, walkie):
+        session = self._sessions.get(walkie)
+        if session is None or session.status != SESSION_STATUS.AUTHENTICATED:
+            raise Exception(ERROR_CODES.UNAUTHORIZED)
 
     def ensureWalkieNotInUse(self, walkie):
         for session in self._sessions.values():
-            if session.walkie == walkie:
+            if session.status == SESSION_STATUS.AUTHENTICATED and session.walkie == walkie:
                 raise Exception(ERROR_CODES.WALKIE_IN_USE)
 
     def ensureUserNotLoggedIn(self, username):
@@ -228,7 +249,9 @@ class Controller:
 
     
     def createSession(self, initialStatus, walkie, user):
-        return Session(walkie, user)
+        session = Session(walkie, user, initialStatus)
+        self._sessions[walkie] = session
+        return 
     
     def destroySession(self, session):
         del self._sessions[session.id]
