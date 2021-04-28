@@ -195,7 +195,7 @@ class AuthenticationServer_Sender:
         Validates if the user can log in or not by checking if the username and password given matches a user in the database.
         If the user is valid to log in a message is sent to the driver with the username, password, walkieId and token.
         If a user is not valid the driver is notified.
-        Token is a unique string of hexadecimal numbers used for message integrity.
+        Token is a unique string of hexadecimal numbers used for message authentication.
     """ 
     def validateLogin(self, username, password, walkieId):
         sentValid = False
