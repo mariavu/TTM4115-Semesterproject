@@ -67,15 +67,16 @@ class AuthenticationServer_MQTT:
         self._logger.debug('Incoming message to topic {}'.format(msg.topic))
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
-            print(payload)
+            #print(payload)
         except Exception as err:
             print('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(msg.topic, err))
             self._logger.error('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(msg.topic, err))
+            self.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "2"}))
             return
 
         command = payload.get('command')
         
-        if command == "register_user":
+        if command == "100":
             username = payload.get('username')
             name = payload.get('name')
             password = payload.get('password')
@@ -83,7 +84,7 @@ class AuthenticationServer_MQTT:
             hospital = payload.get('hospital')
             self.driver.send('registrationRequest','Authentication_server', args=[username, name, password, userId, hospital])
             
-        if command == "login":
+        if command == "101":
             username = payload.get('username')
             password = payload.get('password')
             walkieId = payload.get('walkieId')
@@ -146,16 +147,16 @@ class AuthenticationServer_Sender:
         self.authMqtt = authMqtt
 
     def sendMessageReg(self):
-        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "registration_successful"}))
+        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "101"}))
 
-    def sendErrorRegistration(self):
-        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "registration_failed"}))
+    def sendErrorRegistration(self, error):
+        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "101", "error_message":error}))
 
     def sendMessageLogin(self, username, password, walkieId, token):
-        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "login_successful", "username":username, "token":token}))
+        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "100", "username":username, "token":token}))
 
     def sendErrorLogin(self, error):
-        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "login_failed", "error_message": error}))
+        self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "100", "error_message": error}))
 
     def sendLogOut(self):
         self.authMqtt.mqtt_client.publish(MQTT_TOPIC_OUTPUT, json.dumps({"command": "logout_successful"}))
@@ -181,7 +182,7 @@ class AuthenticationServer_Sender:
                     counterBad += 1
 
         if counterBad != 0:
-            self.authMqtt.driver.send('notValidReg', 'Authentication_server')
+            self.authMqtt.driver.send('notValidReg', 'Authentication_server', args=[7])
         else:
             self.authMqtt.driver.send('validReg', 'Authentication_server', args=[username, name, password, userId, hospital])
 
@@ -202,7 +203,7 @@ class AuthenticationServer_Sender:
         token = ""
         error = ""
         if username in self.authMqtt.loggedInUsers:
-            error = "user already logged in"
+            error = "4"
         else:
             for i in range(32):
                 randomNr = random.randint(0, 1)
@@ -218,7 +219,7 @@ class AuthenticationServer_Sender:
                     self.authMqtt.driver.send('validLog', 'Authentication_server', args=[username, password, walkieId, token])
                     sentValid = True
                 else:
-                    error = "username or password are incorrect"
+                    error = "1"
             
         if not sentValid:
             self.authMqtt.driver.send('notValidLog', 'Authentication_server', args = [error])
@@ -273,7 +274,7 @@ t6 = {
 t7 = {
     'trigger': 'notValidReg',
     'source': 'validating_registration',
-    'effect': 'sendErrorRegistration',
+    'effect': 'sendErrorRegistration(*)',
     'target': 'idle'}
 
 t8 = {
