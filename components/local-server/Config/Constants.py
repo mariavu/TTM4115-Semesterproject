@@ -14,6 +14,8 @@ class ERROR_CODES(Enum):
     INVALID_TOKEN = 8
     NOT_PARTICIPATING_IN_CHANNEL = 9
     ACCESS_DENIED = 10
+    #INVALID_SERVER = 11
+    #Er dette greit??? Man sjekker om authentication server har den serveren som prøver å logge inn en bruker er i databasen
 
 
 class AUTH_SERVER_MESSAGE(Enum):
