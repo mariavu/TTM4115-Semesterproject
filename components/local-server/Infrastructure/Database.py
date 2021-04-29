@@ -13,13 +13,13 @@ class Database:
         del self._users[toRemove.id]
     
     def addChannel(self, toAdd):
-        self._channels[toAdd] = toAdd
+        self._channels[toAdd.id] = toAdd
     
     def removeChannel(self, toRemove):
         del self._channels[toRemove.id]
     
     def addRole(self, toAdd):
-        self._roles[toAdd] = toAdd
+        self._roles[toAdd.id] = toAdd
     
     def removeRole(self, toRemove):
         del self._roles[roRemove.id]
@@ -29,4 +29,12 @@ class Database:
         return len(self._users)
 
     def findChannel(self, channelId):
+        if not channelId in self._channels:
+            return None
         return self._channels[channelId]
+
+    def findUser(self, username):
+        for user in self._users.values():
+            if user.username == username:
+                return user
+        return None
