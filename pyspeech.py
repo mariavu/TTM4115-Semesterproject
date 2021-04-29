@@ -53,7 +53,7 @@ def voice_loop():
                         if(a=="one"):
                             a=1
                         speak("ok")
-                        return "channel_"+str(a),1
+                        return str(a),1
         return "channel_0",0
 
 voice_loop()
