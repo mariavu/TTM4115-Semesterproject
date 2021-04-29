@@ -56,4 +56,4 @@ def voice_loop():
                         return str(a),1
         return "channel_0",0
 
-voice_loop()
+#voice_loop()
