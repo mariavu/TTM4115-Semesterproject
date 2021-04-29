@@ -41,6 +41,8 @@ class Session:
     def setToken(self, token):
         self._token = token
         self._status = SESSION_STATUS.AUTHENTICATED
+    def setRegistered(self):
+        self._status = SESSION_STATUS.REGISTERED
 """
 #states:
     #idle

@@ -4,13 +4,15 @@ from time import sleep
 
 from Infrastructure.Controller import Controller
 from Infrastructure.Database import Database
+from Infrastructure.TPM import TPM
 
 
 def main():
     db = Database()
+    tpm = TPM()
     seedDatabase(db)
 
-    controller = Controller(db, MQTT_BROKER, MQTT_PORT, "1", MQTT_ROOT_TOPIC)
+    controller = Controller(db, MQTT_BROKER, MQTT_PORT, "1", MQTT_ROOT_TOPIC, tpm)
     controller.start()
 
     while 1:
