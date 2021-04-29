@@ -5,6 +5,8 @@ import logging
 from threading import Thread
 import json
 import random
+from datetime import datetime
+from datetime import date
 
 # Define MQTTT broker and port
 MQTT_BROKER = 'mqtt.item.ntnu.no'
@@ -223,6 +225,14 @@ class AuthenticationServer_Sender:
                     error = 1
             
         if not sentValid:
+            f = open("UnsuccessfulLoginsLog.txt", "a")
+            now = datetime.now()
+            current_time = now.strftime("%H:%M:%S")
+            today = date.today()
+            dateToday = today.strftime("%B %d, %Y")
+            txt = "Date: {}. Time: {}. \nUser with username {} tried to login using {} as password with walkieId {}. This returned the error message {}.\n \n"
+            f.write(txt.format(dateToday, current_time, username,password, walkieId, error))
+            f.close()
             self.authMqtt.driver.send('notValidLog', 'Authentication_server', args = [error, walkieId])
             
     """
