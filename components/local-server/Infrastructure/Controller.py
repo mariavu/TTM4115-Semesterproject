@@ -174,24 +174,6 @@ class Controller:
         self._driver.send("authSuccess", walkie, [token])
         self.sendToWalkie(walkie, WALKIE_MESSAGE.LOGIN, {'token': token})
 
-    def ensureValidToken(self, token):
-        if token is None:
-            raise Exception(ERROR_CODES.INVALID_TOKEN)
-        if not self._tpm.validateToken(token):
-            raise Exception(ERROR_CODES.INVALID_TOKEN)
-
-    def findSessionFromToken(self, token):
-        for session in self._sessions:
-            if session.token == token:
-                return session
-        return None
-
-    def findSessionFromWalkie(self, walkie):
-        for session in self._sessions:
-            if session.walkie == walkie:
-                return session
-        return None
-
 
     def handleJoinChannel(self, session, message): #{command: JOIN_CHANNEL, channel: <Id>, session: <Id>}
         channel = self._db.findChannel(message.get("channel"))
@@ -287,6 +269,24 @@ class Controller:
 
 # Helper methods
     
+
+    def ensureValidToken(self, token):
+        if token is None:
+            raise Exception(ERROR_CODES.INVALID_TOKEN)
+        if not self._tpm.validateToken(token):
+            raise Exception(ERROR_CODES.INVALID_TOKEN)
+
+    def findSessionFromToken(self, token):
+        for session in self._sessions:
+            if session.token == token:
+                return session
+        return None
+
+    def findSessionFromWalkie(self, walkie):
+        for session in self._sessions:
+            if session.walkie == walkie:
+                return session
+        return None
 
     
     def sendToAuthServer(self, message_type, message):
