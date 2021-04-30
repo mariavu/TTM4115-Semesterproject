@@ -53,36 +53,6 @@ class Session:
     def beginRegister(self):
         self._status = SESSION_STATUS.PENDING_REGISTRATION
 
-
-        """
-debug_level = logging.DEBUG
-logger = logging.getLogger(__name__)
-logger.setLevel(debug_level)
-ch = logging.StreamHandler()
-ch.setLevel(debug_level)
-formatter = logging.Formatter('%(asctime)s - %(name)-12s - %(levelname)-8s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
-
-"""
-"""
-#states:
-    #idle
-    #PendingReg
-    #PendingAuth
-    #Authenticated
-    #Final
-
-    #Triggers:
-    #joinedChannel
-    #leftChannel
-    #authBegin
-    #regBegin
-    #authSuccessful
-    #authFail
-    #regSuccess
-    #regFail
-"""
 #States
 idle = {
     'name': 'Idle'
