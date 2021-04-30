@@ -89,7 +89,7 @@ class Controller:
                     return
                 if command in self._walkieHandlers:
                     if command not in [WALKIE_MESSAGE.REGISTER.value, WALKIE_MESSAGE.LOGIN.value]:
-                        #Authenticated Request
+                        #Authenticated request; must verify token
                         token = payload.get("token", None)
                         self.ensureValidToken(token)
                         session = self.findSessionFromToken(token)
@@ -97,7 +97,7 @@ class Controller:
                     else:
                         self._walkieHandlers[command](None, payload)
                     return
-                print("Unknown message type")
+                raise Exception(ERROR_CODES.UNKNOWN_MESSAGE_TYPE)
             except Exception as error:
                 details = None
                 if len(error.args) == 2:
@@ -108,7 +108,7 @@ class Controller:
                     self.sendErrorResponse(command, walkie, error.args[0], details)#command.payload.get("walkie"), error.args[0])
                 return
         except Exception as err:
-            print("Exception occurred ", traceback.print_exc(err))
+            print("Unhandled exception occurred ", traceback.print_exc(err))
             return
 
 # Message Handlers
@@ -254,6 +254,7 @@ class Controller:
                 continue            
             if not (channel.id in otherSession.joinedChannels):
                 continue
+            print("Sending to ", otherSession.userName)
             self.sendToWalkie(otherSession.walkie, WALKIE_MESSAGE.INCOMING_MESSAGE, {'id' : messageId, 'duration' : newMessage.duration, emergency: newMessage.isEmergency, 'payload': newMessage.payload, 'timestamp' : newMessage.timestamp.strftime("%s")})
 
         self.sendToWalkie(session.walkie, WALKIE_MESSAGE.SEND_MESSAGE, {'id' : messageId})
