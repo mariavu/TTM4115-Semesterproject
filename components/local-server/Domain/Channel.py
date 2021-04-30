@@ -2,6 +2,8 @@ class Channel:
 
     def __init__(self, id, messages):
         self._id = id
+        if messages is None:
+            messages = []
         self._messages = messages
         
 
@@ -12,6 +14,9 @@ class Channel:
     @property
     def messages(self):
         return self._messages
+    
+    def publishMessage(self, newMessage):
+        self._messages.append(newMessage)
     
     #Id
     #Name
@@ -37,3 +42,4 @@ class GroupChannel(Channel): #This class inherits from Channel and extends its f
             if role in self._roles:
                 return True
         return False
+    

@@ -1,12 +1,13 @@
 class Message:
 
-    def __init__(self, id, sender, to, length, contents, timestamp):
+    def __init__(self, id, sender, channel, duration, isEmergency, payload, timestamp):
         self._id = id
         self._sender = sender
-        self._to = to
-        self._length = length
-        self._data = contents
+        self._channel = channel
+        self._duration = duration
+        self._payload = payload
         self._timestamp = timestamp
+        self._emergency = isEmergency
     
     @property
     def id(self):
@@ -17,17 +18,20 @@ class Message:
         return self._sender
     
     @property
-    def to(self):
-        return self._to
+    def channel(self):
+        return self._channel
     @property
-    def length(self):
-        return self._length
+    def duration(self):
+        return self._duration
     @property
-    def contents(self):
-        return self._contents
+    def payload(self):
+        return self._payload
     @property
     def timestamp(self):
-        return self._data
+        return self._timestamp
+    @property
+    def isEmergency(self):
+        return self._emergency
     
     #from <UserId>
     #to <ChannelId>

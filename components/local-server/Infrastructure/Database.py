@@ -3,6 +3,8 @@ class Database:
         self._users = {}
         self._channels = {}
         self._roles = {}
+        self._messages = {}
+
 
     #Only need add/remove methods; we are esentially following the 'ActiveRecord'-pattern, except we never actually persist any data.
 
@@ -38,3 +40,13 @@ class Database:
             if user.username == username:
                 return user
         return None
+    def addMessage(self, toAdd):
+        self._messages[toAdd.id] = toAdd
+
+    def findMessage(self, messageId):
+        if not messageId in self._messages:
+            return None
+        return self._messages[messageId]
+
+    def findAllChannels(self):
+        return self._channels
