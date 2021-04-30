@@ -29,11 +29,11 @@ class AuthenticationServer_MQTT:
         self._logger = logging.getLogger(__name__)
 
         #Database for all registered users
-        # The format is "username": ["Name", "Password", "Walkie ID", "LocalServer"],
+        # The format is "username": ["Name", "Password", "LocalServer"],
         self.registeredUsers = {
-            "user1": ["Name1", "Password1", "WalkieId", "1"],
-            "Brad123": ["Brad McBradface", "123abc", "DeviceID2", "1"],
-            "Team5": ["Jon Pedersen", "SyltetøyErGodt", "DeviceID3", "1"]
+            "user1": ["Name1", "Password1", "1"],
+            "Brad123": ["Brad McBradface", "123abc", "1"],
+            "Team5": ["Jon Pedersen", "SyltetøyErGodt", "1"]
         }
         #Database for all registered walkie talkies
         # The format is "Device ID": ["Private Key", "Which local server it is connected to", "Current user"]
@@ -71,7 +71,6 @@ class AuthenticationServer_MQTT:
             return
 
         command = payload.get('command')
-        
         if command == 101:
             username = payload.get('username')
             name = payload.get('name')
@@ -169,6 +168,7 @@ class AuthenticationServer_Sender:
     def validateRegistration(self, username, name, password, walkieId, role, localServer):
         usernameInUse = False
         validServer = False
+        validWalkie = False
         error = 0
         for x in self.authMqtt.registeredUsers.keys():
             if username == x:
@@ -178,11 +178,18 @@ class AuthenticationServer_Sender:
             if x == localServer:
                 validServer = True
 
+        for x in self.authMqtt.registeredWalkies.keys():
+            if x == walkieId:
+                validWalkie = True
+
 
         if usernameInUse:
             self.authMqtt.driver.send('notValidReg', 'Authentication_server', args=[error,walkieId])
         elif not validServer:
             error = 11
+            self.authMqtt.driver.send('notValidReg', 'Authentication_server', args=[error,walkieId])
+        elif not validWalkie:
+            error = 12
             self.authMqtt.driver.send('notValidReg', 'Authentication_server', args=[error,walkieId])
         else:
             self.authMqtt.driver.send('validReg', 'Authentication_server', args=[username, name, password, walkieId, role, localServer])
@@ -191,7 +198,7 @@ class AuthenticationServer_Sender:
         Adds the user that wants to register to the "database"
     """       
     def registration(self, username, name, password, walkieId, role, localServer):
-        self.authMqtt.registeredUsers.update({username: [name, password, walkieId, localServer]})
+        self.authMqtt.registeredUsers.update({username: [name, password,localServer]})
 
     """
         Validates if the user can log in or not by checking if the username and password given matches a user in the database.
@@ -201,6 +208,7 @@ class AuthenticationServer_Sender:
     """ 
     def validateLogin(self, username, password, walkieId, localServer):
         sentValid = False
+        validWalkie = False
         token = ""
         error = None
         
@@ -214,8 +222,12 @@ class AuthenticationServer_Sender:
                 number = str(random.randint(1, 9))
                 token += number
 
+        for x in self.authMqtt.registeredWalkies.keys():
+            if x == walkieId:
+                validWalkie = True
+
         for x, y in self.authMqtt.registeredUsers.items():
-            if x == username and y[1] == password and y[3]== localServer:
+            if x == username and y[1] == password and y[2]== localServer and validWalkie:
                 self.authMqtt.driver.send('validLog', 'Authentication_server', args=[username, password, walkieId, token, localServer])
                 sentValid = True
             else:
