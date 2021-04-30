@@ -10,7 +10,6 @@ from pyspeech2 import auditioplay,speak,get_audio,record_p,voice_loop
 
 from tkinter import *
 from tkinter import messagebox, OptionMenu
-from main_page_gui import home_screen
 import os
 import time
 
@@ -25,39 +24,11 @@ MQTT_SERVER='ttm4115/team_5/semesterprosjekt/walkie/66'
 filename="mic_recording.wav" #file to send
 output_file="output_walkie.wav"
 channelvar=0
+
 class Voice_component:
     """
     The component to send voice commands.
     """
-
-    def on_connect(self, client, userdata, flags, rc):
-        # we just log that we are connected
-        self._logger.debug('MQTT connected to {}'.format(client))
-
-    def on_message(self, client, userdata, msg):
-        
-        try:
-            payload = json.loads(msg.payload.decode("utf-8"))
-           
-        except Exception as err:
-            self._logger.error('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(msg.topic, err))
-            return
-        print(payload.get('command'))
-        if(payload.get('command')=="new_voice_message"):
-            chunk = payload.get('Payload')
-            decoded = base64.b64decode(chunk)
-            fout=open(output_file,"wb")
-            fout.write(decoded)
-            print("new message")
-            self.p.play("1out.wav", 4)
-
-        elif(payload.get('command')=="new_text"):
-            print(payload.get('Payload'))
-        elif(payload.get('command')=="new_registration"):
-            
-            Label(screen1, text="Registration successfull", fg = "green", font = ("calibri", 11)).pack()
-            
-
 
 
     def __init__(self):
@@ -80,7 +51,7 @@ class Voice_component:
         self.mqtt_client.subscribe(MQTT_RESPONSE)
         self.mqtt_client.loop_start()
         
-    def guirun(self):
+    def guirun(self,call_func):
         #channelvar=0
         def publish_command(command):
             payload = json.dumps(command)
@@ -260,7 +231,9 @@ class Voice_component:
 
             username_entry1.delete(0, END)
             password_entry1.delete(0, END)
-
+            command = {"command": 0, "walkie": Walkie_ID, "username": username1, "password": password1}
+            publish_command(command)
+            """
             list_of_files = os.listdir()
             if username1 in list_of_files:
                 file = open(username1, "r")
@@ -280,7 +253,7 @@ class Voice_component:
             else:
                 #print("User not found")
                 messagebox.showinfo('Walkie','Invalid username or password')
-
+            """
 
             
         def login():
@@ -324,8 +297,40 @@ class Voice_component:
             Button(screen, text = "Register", width = "10", height = "1", command = register).pack()
 
             screen.mainloop()
+        if(call_func):
+            print("haha")
+            return home_screen()
+        else:
+            main_screen()
 
-        main_screen()
+    def on_connect(self, client, userdata, flags, rc):
+        # we just log that we are connected
+        self._logger.debug('MQTT connected to {}'.format(client))
+
+    def on_message(self, client, userdata, msg):
+        
+        try:
+            payload = json.loads(msg.payload.decode("utf-8"))
+           
+        except Exception as err:
+            self._logger.error('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(msg.topic, err))
+            return
+        print(payload.get('command'))
+        if(payload.get('command')=="new_voice_message"):
+            chunk = payload.get('Payload')
+            decoded = base64.b64decode(chunk)
+            fout=open(output_file,"wb")
+            fout.write(decoded)
+            print("new message")
+            self.p.play("1out.wav", 4)
+        elif(payload.get('command')=="1" and payload.get('status')):  
+            Label(screen1, text="Registration successfull", fg = "green", font = ("calibri", 11)).pack()
+        elif(payload.get('command')=="1" and payload.get('error')):
+            Label(screen1, text="Registration unsuccessfull corde"+str(payload.get('error')), fg = "red", font = ("calibri", 11)).pack()
+        elif(payload.get('token')==1):
+            screen2.destroy()
+            time.sleep(1)
+            t.guirun(True)
 
     def stop(self):
         """
@@ -349,19 +354,20 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 t = Voice_component()
-Thread(target=t.guirun).start()
+Thread(target=t.guirun(0)).start()
 
 def a():
     while(1):
         dat=voice_loop()
-        if(dat[1]==1 and dat[0]!="channel_0"):
+        if(dat[1]!=0 and dat[0]!="channel_0"):
             fo=open("mic_results.wav","rb")
             chunk=fo.read()
             encoded = base64.b64encode(chunk)
-            command = {"command": "new_voice_message", "to_channel":dat[0], "Payload": encoded.decode('ascii'),'Length':str(len(chunk))}
+            command = {"command": "SEND_MESSAGE", "channel":"CHANNEL-"+dat[0],'length':dat[1],"emergency":"FALSE","payload": encoded.decode('ascii')}
             payload = json.dumps(command)
             t.mqtt_client.publish(MQTT_SERVER, payload=payload, qos=2)
             speak("ok it is sent")
+       
     
 Thread(target=a).start()
 
