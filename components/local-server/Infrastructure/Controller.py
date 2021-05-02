@@ -93,9 +93,7 @@ class Controller:
                         token = payload.get("token", None)
                         self.ensureValidToken(token)
                         session = self.findSessionFromToken(token)
-                        self._walkieHandlers[command](session, payload)
-                    else:
-                        self._walkieHandlers[command](None, payload)
+                    self._walkieHandlers[command](session, payload)
                     return
                 raise Exception(ERROR_CODES.UNKNOWN_MESSAGE_TYPE)
             except Exception as error:
