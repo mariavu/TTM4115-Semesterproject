@@ -237,7 +237,7 @@ class Controller:
             if not (channel.id in otherSession.joinedChannels):
                 continue
             print("Sending to ", otherSession.userName)
-            self.sendToWalkie(otherSession.walkie, WALKIE_MESSAGE.INCOMING_MESSAGE, {'id' : messageId, 'duration' : newMessage.duration, emergency: newMessage.isEmergency, 'payload': newMessage.payload, 'timestamp' : newMessage.timestamp.strftime("%s")})
+            self.sendToWalkie(otherSession.walkie, WALKIE_MESSAGE.INCOMING_MESSAGE, {'id' : messageId, 'duration' : newMessage.duration, emergency: newMessage.isEmergency, 'payload': newMessage.payload, 'timestamp' : newMessage.timestamp.strftime("%Y-%m-%d %H:%M:%S")})
 
         self.sendToWalkie(session.walkie, WALKIE_MESSAGE.SEND_MESSAGE, {'id' : messageId})
 
@@ -250,7 +250,7 @@ class Controller:
      
         for i in range(len(channel.messages)):
             msg = channel.messages[i]
-            messageDetails.append({'id' : msg.id, 'duration': msg.duration, 'timestamp' : msg.timestamp.strftime("%s"), 'from': msg.sender})
+            messageDetails.append({'id' : msg.id, 'duration': msg.duration, 'timestamp' : msg.timestamp.strftime("%Y-%m-%d %H:%M:%S"), 'from': msg.sender})
 
         self.sendToWalkie(session.walkie, WALKIE_MESSAGE.LIST_MESSAGES,{'channel': channel.id, 'messages': messageDetails})
         
@@ -265,7 +265,7 @@ class Controller:
         user = self._db.findUser(session.userName)
         if not channel.hasAccess(user):
             raise Exception(ERROR_CODES.ACCESS_DENIED)
-        self.sendToWalkie(session.walkie, WALKIE_MESSAGE.GET_MESSAGE, {'id' : messageId, 'duration' : messageDetails.duration, 'emergency': messageDetails.isEmergency, 'payload': messageDetails.payload, 'timestamp' : messageDetails.timestamp.strftime("%s")})
+        self.sendToWalkie(session.walkie, WALKIE_MESSAGE.GET_MESSAGE, {'id' : messageId, 'duration' : messageDetails.duration, 'emergency': messageDetails.isEmergency, 'payload': messageDetails.payload, 'timestamp' : messageDetails.timestamp.strftime("%Y-%m-%d %H:%M:%S")})
 
 # Helper methods
     
