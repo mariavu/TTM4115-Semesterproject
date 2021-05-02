@@ -237,7 +237,7 @@ class Controller:
             if not (channel.id in otherSession.joinedChannels):
                 continue
             print("Sending to ", otherSession.userName)
-            self.sendToWalkie(otherSession.walkie, WALKIE_MESSAGE.INCOMING_MESSAGE, {'id' : messageId, 'duration' : newMessage.duration, emergency: newMessage.isEmergency, 'payload': newMessage.payload, 'timestamp' : newMessage.timestamp.strftime("%Y-%m-%d %H:%M:%S")})
+            self.sendToWalkie(otherSession.walkie, WALKIE_MESSAGE.INCOMING_MESSAGE, {'id' : messageId, 'duration' : newMessage.duration, 'emergency': newMessage.isEmergency, 'payload': newMessage.payload, 'timestamp' : newMessage.timestamp.strftime("%Y-%m-%d %H:%M:%S")})
 
         self.sendToWalkie(session.walkie, WALKIE_MESSAGE.SEND_MESSAGE, {'id' : messageId})
 
