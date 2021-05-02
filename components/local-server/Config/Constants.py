@@ -19,6 +19,8 @@ class ERROR_CODES(Enum):
     INVALID_SERVER = 13
     INVALID_WALKIE = 14
 
+    
+
 
 class AUTH_SERVER_MESSAGE(Enum):
     LOGIN = 100
@@ -35,4 +37,4 @@ class WALKIE_MESSAGE(Enum):
     INCOMING_MESSAGE = 7
     LIST_CHANNELS = 8
     SIGN_OUT = 9    
-
+   
