@@ -1,4 +1,6 @@
 # TTM4115-Semesterproject
+Delivered: **02.05.2021**
+
 **Authors**: 
 - Harald Sæther
 - Henrik Udnes
