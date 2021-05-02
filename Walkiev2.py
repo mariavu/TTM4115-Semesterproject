@@ -2,7 +2,7 @@ import paho.mqtt.client as mqtt
 import logging
 from threading import Thread
 import json
-from appJar import gui
+
 import base64
 import time
 #from register_login_gui import *
@@ -14,14 +14,22 @@ import os
 import time
 from uuid import uuid4
 import os
-Walkie_ID="DeviceID1"
+Walkie_ID="DeviceID2"
 MQTT_BROKER = 'mqtt.item.ntnu.no'
 MQTT_PORT = 1883
 
-MQTT_RESPONSE='ttm4115/team_5/semesterprosjekt/walkie/DeviceID1'
+MQTT_RESPONSE='ttm4115/team_5/semesterprosjekt/walkie/DeviceID2'
 MQTT_SERVER='ttm4115/team_5/semesterprosjekt/local_server/1/req'
-#MQTT_SERVER='ttm4115/team_5/semesterprosjekt/walkie/66'
-mic_file="dover/mic_recording.wav"
+
+"""
+
+Note, you need to choose different device id in pyspeech for the play() function as the ai occupies the default output.
+
+
+"""
+
+directory="dover/"
+mic_file=directory+"mic_recording.wav" #husk og endre i pyspeechv2
 
 channelvar=''
 jchvar=''
@@ -31,6 +39,10 @@ list1 = []
 
 playing=False
 queue_1=[]
+
+errordict={0:"SESSION_EXISTS",1:"INVALID_USER_CREDENTIALS",2:"UNKNOWN_MESSAGE_TYPE",3: "WALKIE_ALREADY_IN_USE",4:"USER_ALREADY_LOGGED_IN",
+5:"UNAUTHORIZED",6:"UNKNOWN_CHANNEL",7:"USERNAME_TAKEN",8:"INVALID_TOKEN",9:"NOT_PARTICIPATING_IN_CHANNEL",10:"ACESS_DENIED",
+11:"UNKNOWN_VOICE_MESSAGE",12:"ALREADY_PARTICIPATING_IN_CHANNEL",13:"INVALID_SERVER",14:"INVALID_WALKIE",15:"VOICE_MESSAGE_LIMIT_EXCEEDED",16:"VOICE_MESSAGE_TOO_LONG"}
 
 class Voice_component:
     """
@@ -59,7 +71,7 @@ class Voice_component:
     
     def speechloop(self):
         while(1):
-            dat=voice_loop()
+            dat=voice_loop(mic_file)
             if(dat[1]!=0 and dat[0]!="channel_0"):
                 fo=open(mic_file,"rb")
                 chunk=fo.read()
@@ -76,7 +88,8 @@ class Voice_component:
             for sublist in queue_1:
 
                 if(sublist[0]=="emergency"):
-                    print("emergency")
+                    #print("emergency")
+                    Label(Toplevel(home), text="Emergency message playing", fg = "red", font = ("calibri", 11)).pack()
                     queue_1.pop(queue_1.index(sublist))
                     queue_1.insert(0,sublist)
                     break
@@ -99,7 +112,7 @@ class Voice_component:
             fo=open(mic_file,"rb")
             chunk=fo.read()
             encoded = base64.b64encode(chunk)
-            dur=getduration()
+            dur=getduration(mic_file)
             command = {"command": 4, "channel":channelvar,'duration':dur,"emergency":1,'token':self.token,'id':str(uuid4()),"payload": encoded.decode('ascii')}
             publish_command(command)
             Label(emergency_screen, text="Message sent", fg = "green", font = ("calibri", 11)).pack()
@@ -108,7 +121,7 @@ class Voice_component:
             fo=open(mic_file,"rb")
             chunk=fo.read()
             encoded = base64.b64encode(chunk)
-            dur=getduration()
+            dur=getduration(mic_file)
             command = {"command": 4, "channel":channelvar,'duration':dur,"emergency":0,'token':self.token,'id':str(uuid4()),"payload": encoded.decode('ascii')}
             publish_command(command)
             Label(recording_screen, text="Message sent", fg = "green", font = ("calibri", 11)).pack()
@@ -138,7 +151,7 @@ class Voice_component:
         def btn1(value):
             global channelvar
             channelvar=value
-            print("btn1")
+            #print("btn1")
      
         def choose_channel():
             global channels_screen
@@ -169,10 +182,10 @@ class Voice_component:
             list_screen.title("Add new channel")
             list_screen.geometry("300x250")
             list_screen.grab_set()
-            print(list1)
+            #print(list1)
             for item in list1:
                 Button(list_screen, text=item.get('name'), width="10", height="2").pack()
-                print(item)
+                #print(item)
 
         def join_channel():
             global join_screen
@@ -384,38 +397,52 @@ class Voice_component:
             screen2.destroy()
             time.sleep(1)
             t.guirun(True)
-        elif(payload.get("command")==0 and payload.get("error")):
-            Label(screen2, text="Error "+str(payload.get('error')), fg = "red", font = ("calibri", 11)).pack()
-        elif(payload.get('command')==1 and payload.get('status')==200):  
-            Label(screen1, text="Registration successfull", fg = "green", font = ("calibri", 11)).pack()
-        elif(payload.get('command')==1 and payload.get('error')!=200):
-            Label(screen1, text="Registration unsuccessfull corde"+str(payload.get('error')), fg = "red", font = ("calibri", 11)).pack()
+        elif(payload.get("command")==0 and payload.get("error")!=None):
+            Label(screen2, text="Error "+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
+        elif(payload.get("command")==0 and payload.get("error")!=None):
+            Label(screen2, text="Error "+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
+        elif(payload.get('command')==100 and payload.get('error')!=None):  
+            Label(screen2, text="Error "+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
+        elif(payload.get('command')==1 and payload.get('error')!=200 or payload.get("command")==101):
+            Label(screen1, text="Registration unsuccessfull corde"+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
         elif(payload.get('command')==2):
-            #{'channel': 'CHANNEL-1', 'messages': [{'id': 'MESSAGE-1', 'duration': 200, 'timestamp': '1619798001'}], 'command': 2}
+           
             data=payload.get('messages')
             Label(listm_screen, text="press to get", fg = "green", font = ("calibri", 11)).pack()
             for i in range(len(data)):
                Button(listm_screen, text=data[i].get('id'), width="10", height="2", command=lambda j=i:[self.mqtt_client.publish(MQTT_SERVER, payload=json.dumps({"command": 6, "id": data[j].get('id'),'token':self.token}), qos=2)]).pack()
-        elif(payload.get('command')==3 and payload.get('error')!=None):
-            Label(join_screen, text="error "+payload.get('error'), fg = "blue", font = ("calibri", 11)).pack()
+        elif(payload.get("command")==2 and payload.get("error")!=None):
+            Label(listm_screen, text="Error "+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
+        elif(payload.get("command")==3 and payload.get("error")!=None):
+            Label(join_screen, text="Error "+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
         elif(payload.get('command')==3 and payload.get('error')==None):
             Label(join_screen, text="joined "+payload.get('channel'), fg = "blue", font = ("calibri", 11)).pack()       
+        elif(payload.get("command")==4 and payload.get("error")!=None):
+            Label(screen2, text="Error "+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
         elif(payload.get('command')==5):
             Label(leave_screen, text="left "+payload.get('channel'), fg = "blue", font = ("calibri", 11)).pack()
-
+        elif(payload.get("command")==5 and payload.get("error")!=None):
+            Label(Toplevel(home), text="Error "+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
         elif(payload.get('command')==7 or payload.get('command')==6 ):
-            fname="dover/"+str(uuid4())+".wav"
+            fname=directory+str(uuid4())+".wav"
             tmp=[payload.get('id'),fname]
-            if(payload.get("emergency")==True):
+            if(payload.get("emergency")==True or payload.get("emergency")=='1'):
                 tmp[0]="emergency"
-            
+
             chunk = payload.get('payload')
             self.storerecord(chunk,tmp)
-       
+
+        elif(payload.get("command")==6 and payload.get("error")!=None):
+            Label(home, text="Error "+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
+        elif(payload.get("command")==7 and payload.get("error")!=None):
+            Label(home, text="Error "+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
+
         elif(payload.get('command')==8):
             global list1
             list1=payload.get('channels')
-            print(list1)
+            #print(list1)
+        elif(payload.get("command")==8 and payload.get("error")!=None):
+            Label(home, text="Error "+errordict[payload.get('error')], fg = "red", font = ("calibri", 11)).pack()
 
     def storerecord(self, chunk,tmp):
         
