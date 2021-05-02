@@ -16,6 +16,8 @@ class ERROR_CODES(Enum):
     ACCESS_DENIED = 10
     UNKNOWN_VOICE_MESSAGE = 11
     ALREADY_PARTICIPATING_IN_CHANNEL = 12 # GUI (If JoinChannel is sent when user is already participating in channel)
+    INVALID_SERVER = 13
+    INVALID_WALKIE = 14
 
 
 class AUTH_SERVER_MESSAGE(Enum):
