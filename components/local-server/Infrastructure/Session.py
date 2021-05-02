@@ -1,24 +1,20 @@
-import stmpy
 from enum import Enum
 
 class SESSION_STATUS(Enum):
-    PENDING_REGISTRATION = 0
-    PENDING_LOGIN = 1
-    AUTHENTICATED = 2
-    REGISTERED = 3
+    IDLE = 0
+    PENDING_REGISTRATION = 1
+    PENDING_LOGIN = 2
+    AUTHENTICATED = 3
 
 class Session:
-    #Walkie
-    #User
-    #JoinedChannels
-    #Authenticated
 
-    def __init__(self, walkie, userName, initialStatus):
+    def __init__(self, walkie, userName, controller):
         self._walkie = walkie
         self._userName = userName
         self._authenticated = False
         self._joinedChannels = {}
-        self._status = initialStatus
+        self._status = SESSION_STATUS.IDLE
+        self._controller = controller
 
 
     @property
@@ -34,86 +30,127 @@ class Session:
     def joinedChannels(self):
         return self._joinedChannels
 
+
     @property
     def token(self):
         return self._token
 
     def setToken(self, token):
+        print("Setting token: ", token)
         self._token = token
         self._status = SESSION_STATUS.AUTHENTICATED
-    def setRegistered(self):
-        self._status = SESSION_STATUS.REGISTERED
-"""
-#states:
-    #idle
-    #validation
+    def destroy(self):
+        print("Went into final state")
+        self._controller.removeSession(self)
+    def addChannel(self, channel):
+        self._joinedChannels[channel.id] = channel
+    def removeChannel(self, channel):
+        del self._joinedChannels[channel.id]
 
-#transitions:
-    #response / handleResponse()
-    #notValis / sendError()
-    #valid / sendMessage()
-    #request / go to state validating
+    def beginLogin(self):
+        self._status = SESSION_STATUS.PENDING_LOGIN
+
+    def beginRegister(self):
+        self._status = SESSION_STATUS.PENDING_REGISTRATION
 
 #States
-validating = {
-    'name': 'validating',
-    'entry': 'validate'
+idle = {
+    'name': 'Idle'
+}
+
+pendingReg = {
+    'name': 'pendingReg',
+    'entry': 'start_timer("t",5000);beginRegister',
+}
+
+pendingAuth = {
+    'name': 'pendingAuth',
+    'entry': 'start_timer("t",5000);beginLogin'
+}
+
+authenticated = {
+    'name': 'authenticated',
+    'entry': 'stop_timer("t")'
+}
+
+final = {
+    'name': 'final'
 }
 
 #Transitions
 
-t0 = {
+t11 = {
     'source': 'initial',
-    'target': 'validating',
-    'trigger': 'request' 
+    'target': 'idle'
+}
+t0 = {
+    'source': 'idle',
+    'target': 'pendingReg',
+    'trigger': 'regBegin' 
 }
 
 t1 = {
-    'source': 'validating',
-    'target': 'idle',
-    'trigger': 'notValid',
-    'effect': 'sendError'
-}
-
-t2 = {
-    'source': 'validating',
-    'target': 'idle',
-    'trigger': 'valid',
-    'effect': 'sendMessage'
-}
-
-t3 = {
     'source': 'idle',
-    'target': 'idle',
-    'trigger': 'response',
-    'effect': 'handleResponse'
+    'target': 'pendingAuth',
+    'trigger': 'authBegin'
+}
+t2 = {
+    'source': 'pendingReg',
+    'target': 'final',
+    'trigger': 'regSuccess',
+    'effect' : 'destroy;stop_timer("t")'
+}
+t3 = {
+    'source': 'pendingAuth',
+    'target': 'authenticated',
+    'trigger': 'authSuccess',
+    'effect' : 'setToken(*)'
+}
+t4 = {
+    'source': 'authenticated',
+    'target': 'authenticated',
+    'trigger': 'joinedChannel',
+    'effect' : 'addChannel(*)'
+}
+t5 = {
+    'source': 'authenticated',
+    'target': 'authenticated',
+    'trigger': 'leftChannel',
+    'effect' : 'removeChannel(*)'
+}
+t6 = {
+    'source': 'authenticated',
+    'target': 'final',
+    'trigger': 'signOut',
+    'effect': 'destroy'
+}
+t7 = {
+    'source': 'pendingAuth',
+    'target': 'final',
+    'trigger': 't',
+    'effect': 'destroy'
+}
+t8 = {
+    'source': 'pendingReg',
+    'target': 'final',
+    'trigger': 't',
+    'effect': 'destroy'
 }
 
-self.stm = stmpy.Machine(name=name, states=[validating], transitions=[t0, t1, t2, t3], obj=self)
+t9 = {
+    'source': 'pendingReg',
+    'target': 'final',
+    'trigger': 'regFail',
+    'effect' : 'stop_timer("t");destroy'
+}
+t10 = {
+    'source': 'pendingAuth',
+    'target': 'final',
+    'trigger': 'authFail',
+    'effect': 'stop_timer("t");destroy'
+}
 
-
-#functions
-    #handleResponse()
-    #sendError()
-    #sendMessage()
-    #validate()
-
-
-def validate(self):
-    #TODO implment logic to validate command
-    return result
-   
-def handleResponse(self, result):
-    if result == False:
-        #sendError()
-    elif result == True:
-        #sendMessage()
-
-
-def sendMessage(self):
-   pass 
-
-def sendError(self):
-    pass
-    
-"""
+SessionStateMachineConfig = {
+    'states': [idle, pendingReg, pendingAuth, authenticated, final],
+    'transitions' : [t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11]
+}
