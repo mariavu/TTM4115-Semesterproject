@@ -16,7 +16,20 @@ class Channel:
         return self._messages
     
     def publishMessage(self, newMessage):
+        if newMessage.duration > 60:
+            return -1
+        user = newMessage.sender
+        lastMinuteCount = 0
+        for msg in self._messages:
+            if msg.sender == user and (newMessage.timestamp - msg.timestamp).minute < 1:
+                lastMinuteCount += 1
+                if lastMinuteCount == 10: #No need to saearch further
+                    break 
+        
+        if lastMinuteCount == 10:
+            return 0
         self._messages.append(newMessage)
+        return 1
     
     #Id
     #Name

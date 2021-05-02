@@ -18,6 +18,8 @@ class ERROR_CODES(Enum):
     ALREADY_PARTICIPATING_IN_CHANNEL = 12 # GUI (If JoinChannel is sent when user is already participating in channel)
     INVALID_SERVER = 13
     INVALID_WALKIE = 14
+    VOICE_MESSAGE_LIMIT_EXCEEDED = 15
+    VOICE_MESSAGE_TOO_LONG = 16
 
     
 

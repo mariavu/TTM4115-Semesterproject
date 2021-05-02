@@ -228,8 +228,14 @@ class Controller:
         if not channel.hasAccess(sender):
             raise Exception(ERROR_CODES.ACCESS_DENIED)
 
+
+
         newMessage = Message(messageId, sender.id,  channelId, duration, emergency,payload, datetime.datetime.now())
-        channel.publishMessage(newMessage)
+        result = channel.publishMessage(newMessage)
+        if result == -1:
+            raise Exception(ERROR_CODES.VOICE_MESSAGE_TOO_LONG)
+        if result == 0:
+            raise Exception(ERROR_CODES.VOICE_MESSAGE_LIMIT_EXCEEDED)
         self._db.addMessage(newMessage)
         for otherSession in self._sessions: #Broadcasting to other walkies
             if otherSession.walkie == session.walkie:
