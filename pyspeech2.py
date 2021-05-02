@@ -5,7 +5,7 @@ import speech_recognition as sr
 import subprocess
 import pyttsx3
 import contextlib
-mic_file="dover/mic_recording.wav"
+mic_file="fi/dover/mic_recording.wav"
 class auditioplay():
     def __init__(self,name):
         self.name=name
@@ -80,6 +80,7 @@ def getduration():
         return duration
 
 def voice_loop():
+    a=''
     tet=0
     WAKE="monkey"
     print("Listening")
@@ -91,15 +92,15 @@ def voice_loop():
         for phrase in to_send:
             if phrase in text:
                 a=record_p(text)
-                if "emergency" in text:
-                    tet=1
-                if a==None:
-                    speak("I don't understand")  
-                else:
-                    if(a=="one"):
-                        a=1
-                    speak("ok")
-                    dur=getduration()
-                    return str(a),dur,tet
+        text = get_audio(1,1)
+        if "emergency" in text:
+            tet=1
+        if a==None:
+            speak("I don't understand")
+        else:
+            if(a=="one"):
+                a=1
+            speak("ok")
+            dur=getduration()
+            return str(a),dur,tet
     return "channel_0",0,0
-
