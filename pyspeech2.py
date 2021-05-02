@@ -5,6 +5,7 @@ import speech_recognition as sr
 import subprocess
 import pyttsx3
 import contextlib
+mic_file="dover/mic_recording.wav"
 class auditioplay():
     def __init__(self,name):
         self.name=name
@@ -19,27 +20,27 @@ class auditioplay():
             return (data, pyaudio.paContinue)
         #print(str(p.get_format_from_width(wf.getsampwidth()))+"    "+str(wf.getnchannels())+"   "+str(wf.getframerate()))
         # open stream using callback (3)
-        stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
+        self.stream = p.open(format=p.get_format_from_width(wf.getsampwidth()),
                         channels=wf.getnchannels(),
                         rate=wf.getframerate(),
                         output=True,
                         stream_callback=callback,output_device_index=device_index)
 
         # start the stream (4)
-        stream.start_stream()
+        self.stream.start_stream()
 
         # wait for stream to finish (5)
-        while stream.is_active():
+        while self.stream.is_active():
             time.sleep(0.1)
 
         # stop stream (6)
-        stream.stop_stream()
-        stream.close()
+        self.stream.stop_stream()
+        self.stream.close()
         wf.close()
 
         # close PyAudio (7)
         p.terminate()
-
+    
 
 def speak(text):
     engine = pyttsx3.init()
@@ -58,7 +59,7 @@ def get_audio(store,device_ind):
         except Exception as e:
             print("Exception: " + str(e))
     
-    with open("mic_results.wav","wb") as f:
+    with open(mic_file,"wb") as f:
         f.write(audio.get_wav_data())
 
     return said.lower()
@@ -71,7 +72,7 @@ def record_p(text):
             return textlist[textlist.index(word)+1]
 
 def getduration():
-    fname = 'mic_results.wav'
+    fname = mic_file
     with contextlib.closing(wave.open(fname,'r')) as f:
         frames = f.getnframes()
         rate = f.getframerate()
@@ -79,6 +80,7 @@ def getduration():
         return duration
 
 def voice_loop():
+    tet=0
     WAKE="monkey"
     print("Listening")
     text = get_audio(1,1)
@@ -89,6 +91,8 @@ def voice_loop():
         for phrase in to_send:
             if phrase in text:
                 a=record_p(text)
+                if "emergency" in text:
+                    tet=1
                 if a==None:
                     speak("I don't understand")  
                 else:
@@ -96,6 +100,6 @@ def voice_loop():
                         a=1
                     speak("ok")
                     dur=getduration()
-                    return str(a),dur
-    return "channel_0",0
+                    return str(a),dur,tet
+    return "channel_0",0,0
 

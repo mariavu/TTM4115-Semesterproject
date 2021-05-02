@@ -13,24 +13,24 @@ from tkinter import messagebox, OptionMenu
 import os
 import time
 from uuid import uuid4
-
-Walkie_ID="DeviceID2"
+import os
+Walkie_ID="DeviceID1"
 MQTT_BROKER = 'mqtt.item.ntnu.no'
 MQTT_PORT = 1883
 
-MQTT_RESPONSE='ttm4115/team_5/semesterprosjekt/walkie/DeviceID2'
+MQTT_RESPONSE='ttm4115/team_5/semesterprosjekt/walkie/DeviceID1'
 MQTT_SERVER='ttm4115/team_5/semesterprosjekt/local_server/1/req'
 #MQTT_SERVER='ttm4115/team_5/semesterprosjekt/walkie/66'
+mic_file="dover/mic_recording.wav"
 
-filename="mic_recording.wav" #file to send
-output_file="output_walkie.wav"
 channelvar=''
 jchvar=''
 loginver=0
-emergency_id="CHANNEL-3"
+emergency_id="CHANNEL-1"
 list1 = []
-incoming_queue={'emergency':[],'normal':[]}
+
 playing=False
+queue_1=[]
 
 class Voice_component:
     """
@@ -61,14 +61,33 @@ class Voice_component:
         while(1):
             dat=voice_loop()
             if(dat[1]!=0 and dat[0]!="channel_0"):
-                fo=open("mic_results.wav","rb")
+                fo=open(mic_file,"rb")
                 chunk=fo.read()
                 encoded = base64.b64encode(chunk)
-                command = {"command": 4, "channel":"CHANNEL-"+dat[0],'duration':dat[1],"emergency":0,'id':str(uuid4()),'token':self.token,"payload": encoded.decode('ascii')}
+                command = {"command": 4, "channel":"CHANNEL-"+dat[0],'duration':dat[1],"emergency":dat[2],'id':str(uuid4()),'token':self.token,"payload": encoded.decode('ascii')}
                 payload = json.dumps(command)
                 self.mqtt_client.publish(MQTT_SERVER, payload=payload, qos=2)
                 speak("ok it is sent")
+    #queued messsages handling
+
+    def apha(self):
+        while(1):
        
+            for sublist in queue_1:
+
+                if(sublist[0]=="emergency"):
+                    print("emergency")
+                    queue_1.pop(queue_1.index(sublist))
+                    queue_1.insert(0,sublist)
+                    break
+
+            if(len(queue_1)>0):
+                kal=queue_1[0]
+                
+                self.p.play(kal[1], 4)
+                os.remove(kal[1])
+                queue_1.pop(0)
+                print(queue_1)       
 
     def guirun(self,call_func=False):
         #channelvar=0
@@ -77,20 +96,20 @@ class Voice_component:
             self.mqtt_client.publish(MQTT_SERVER, payload=payload, qos=2)
 
         def emergency_button_click():
-            fo=open("mic_results.wav","rb")
+            fo=open(mic_file,"rb")
             chunk=fo.read()
             encoded = base64.b64encode(chunk)
             dur=getduration()
-            command = {"command": 4, "channel":emergency_id,'duration':dur,"emergency":1,'token':self.token,'id':str(uuid4()),"payload": encoded.decode('ascii')}
+            command = {"command": 4, "channel":channelvar,'duration':dur,"emergency":1,'token':self.token,'id':str(uuid4()),"payload": encoded.decode('ascii')}
             publish_command(command)
             Label(emergency_screen, text="Message sent", fg = "green", font = ("calibri", 11)).pack()
        
         def check_button_click():
-            fo=open("mic_results.wav","rb")
+            fo=open(mic_file,"rb")
             chunk=fo.read()
             encoded = base64.b64encode(chunk)
             dur=getduration()
-            command = {"command": 4, "channel":channelvar,'length':dur,"emergency":0,'token':self.token,'id':str(uuid4()),"payload": encoded.decode('ascii')}
+            command = {"command": 4, "channel":channelvar,'duration':dur,"emergency":0,'token':self.token,'id':str(uuid4()),"payload": encoded.decode('ascii')}
             publish_command(command)
             Label(recording_screen, text="Message sent", fg = "green", font = ("calibri", 11)).pack()
 
@@ -130,6 +149,16 @@ class Voice_component:
             channels_screen.grab_set()
             for i in range(len(list1)):
                 Button(channels_screen, text=list1[i].get('name'), width="10", height="2", command=lambda j=i:[send_message(),btn1(list1[j].get('id'))]).pack()
+        
+        def choose_em_channel():
+            global channelsm_screen
+            
+            channelsm_screen = Toplevel(home)
+            channelsm_screen.title("Choose channel") 
+            channelsm_screen.geometry("300x250")
+            channelsm_screen.grab_set()
+            for i in range(len(list1)):
+                Button(channelsm_screen, text=list1[i].get('name'), width="10", height="2", command=lambda j=i:[emergency(),btn1(list1[j].get('id'))]).pack()
             
        
         def list_channel():
@@ -183,7 +212,7 @@ class Voice_component:
 
             Label(home, text="Choose an action", bg = "dodger blue", width="300", height="2", font= ("Calibri", 13)).pack()
             Label(home, text = "").pack()
-            Button(home, text="Emergency", bg="red", fg="white", width = "10", height = "1", command = emergency).pack()
+            Button(home, text="Emergency", bg="red", fg="white", width = "10", height = "1", command = choose_em_channel).pack()
             Label(home, text = "").pack()
             Button(home, text="Record a message", width = "20", height = "1", command = choose_channel).pack()
             Label(home, text = "").pack()
@@ -286,28 +315,6 @@ class Voice_component:
             command = {"command": 0, "walkie": Walkie_ID, "username": username1, "password": password1}
             publish_command(command)
             
-            
-            """
-            list_of_files = os.listdir()
-            if username1 in list_of_files:
-                file = open(username1, "r")
-                verify = file.read().splitlines()
-
-                if password1 in verify:
-                    #print("Login successfull!")
-                   screen2.destroy()
-                   time.sleep(1)
-                   home_screen()   
-                    
-
-                else:
-                    #print("Password is not found")
-                    messagebox.showinfo('Walkie','Invalid username or password')
-            
-            else:
-                #print("User not found")
-                messagebox.showinfo('Walkie','Invalid username or password')
-            """
 
             
         def login():
@@ -368,42 +375,56 @@ class Voice_component:
         except Exception as err:
             self._logger.error('Message sent to topic {} had no valid JSON. Message ignored. {}'.format(msg.topic, err))
             return
-        
-        if(payload.get('command')==7 or payload.get('command')==6 ):
-            chunk = payload.get('payload')
-            decoded = base64.b64decode(chunk)
-            fout=open(output_file,"wb")
-            fout.write(decoded)
-            print("new message")
-            self.p.play(output_file, 4)
+
+        if(payload.get("command") == 0 and payload.get('token')):#if comand 0 and token then store, run speechrecognition and run the home screen.
+            self.token=payload.get('token')
+            self.mqtt_client.publish(MQTT_SERVER, payload=json.dumps({"command": 8,'token':self.token}), qos=2) 
+            Thread(target=self.speechloop).start()
+            Thread(target=self.apha).start()
+            screen2.destroy()
+            time.sleep(1)
+            t.guirun(True)
+        elif(payload.get("command")==0 and payload.get("error")):
+            Label(screen2, text="Error "+str(payload.get('error')), fg = "red", font = ("calibri", 11)).pack()
         elif(payload.get('command')==1 and payload.get('status')==200):  
             Label(screen1, text="Registration successfull", fg = "green", font = ("calibri", 11)).pack()
         elif(payload.get('command')==1 and payload.get('error')!=200):
             Label(screen1, text="Registration unsuccessfull corde"+str(payload.get('error')), fg = "red", font = ("calibri", 11)).pack()
-        elif(payload.get("command") == 0 and payload.get('token')):
-            self.token=payload.get('token')
-            self.mqtt_client.publish(MQTT_SERVER, payload=json.dumps({"command": 8,'token':self.token}), qos=2) 
-            Thread(target=self.speechloop).start()
-            screen2.destroy()
-            time.sleep(1)
-            t.guirun(True)
-        elif(payload.get('command')==3 and payload.get('error')!=None):
-            Label(join_screen, text="error "+payload.get('error'), fg = "blue", font = ("calibri", 11)).pack()
-        elif(payload.get('command')==3 and payload.get('error')==None):
-            Label(join_screen, text="joined "+payload.get('channel'), fg = "blue", font = ("calibri", 11)).pack()
-        elif(payload.get('command')==5):
-            Label(leave_screen, text="left "+payload.get('channel'), fg = "blue", font = ("calibri", 11)).pack()
         elif(payload.get('command')==2):
             #{'channel': 'CHANNEL-1', 'messages': [{'id': 'MESSAGE-1', 'duration': 200, 'timestamp': '1619798001'}], 'command': 2}
             data=payload.get('messages')
             Label(listm_screen, text="press to get", fg = "green", font = ("calibri", 11)).pack()
             for i in range(len(data)):
                Button(listm_screen, text=data[i].get('id'), width="10", height="2", command=lambda j=i:[self.mqtt_client.publish(MQTT_SERVER, payload=json.dumps({"command": 6, "id": data[j].get('id'),'token':self.token}), qos=2)]).pack()
+        elif(payload.get('command')==3 and payload.get('error')!=None):
+            Label(join_screen, text="error "+payload.get('error'), fg = "blue", font = ("calibri", 11)).pack()
+        elif(payload.get('command')==3 and payload.get('error')==None):
+            Label(join_screen, text="joined "+payload.get('channel'), fg = "blue", font = ("calibri", 11)).pack()       
+        elif(payload.get('command')==5):
+            Label(leave_screen, text="left "+payload.get('channel'), fg = "blue", font = ("calibri", 11)).pack()
+
+        elif(payload.get('command')==7 or payload.get('command')==6 ):
+            fname="dover/"+str(uuid4())+".wav"
+            tmp=[payload.get('id'),fname]
+            if(payload.get("emergency")==True):
+                tmp[0]="emergency"
+            
+            chunk = payload.get('payload')
+            self.storerecord(chunk,tmp)
+       
         elif(payload.get('command')==8):
             global list1
             list1=payload.get('channels')
             print(list1)
+
+    def storerecord(self, chunk,tmp):
         
+        decoded = base64.b64decode(chunk)
+        fout=open(tmp[1],"wb")
+        fout.write(decoded)
+        queue_1.append(tmp)
+        """print("new message")
+        self.p.play(output_file, 4)  """  
 
 
 
