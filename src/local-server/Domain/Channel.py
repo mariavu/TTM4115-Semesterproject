@@ -23,19 +23,13 @@ class Channel:
         for msg in self._messages:
             if msg.sender == user and (newMessage.timestamp - msg.timestamp).minute < 1:
                 lastMinuteCount += 1
-                if lastMinuteCount == 10: #No need to saearch further
+                if lastMinuteCount == 10: #No need to search further
                     break 
         
         if lastMinuteCount == 10:
             return 0
         self._messages.append(newMessage)
         return 1
-    
-    #Id
-    #Name
-    #Roles:
-    #Department
-    #Participants:
 
 class GroupChannel(Channel): #This class inherits from Channel and extends its functionality.
     def __init__(self, id, messages, name, roles):

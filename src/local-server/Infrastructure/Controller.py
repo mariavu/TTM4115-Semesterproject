@@ -24,8 +24,7 @@ class Controller:
 # Setup
 
     def registerWithAuthServer(self):
-        self._authenticated = True
-        pass
+        self._authenticated = True #For now, no need to authenticate, but must be implemented in production.
 
     def start(self):
         self._mqtt.connect(self._host, self._port)
@@ -103,7 +102,7 @@ class Controller:
                 if session is not None:
                     walkie = session.walkie
                 if walkie is not None:
-                    self.sendErrorResponse(command, walkie, error.args[0], details)#command.payload.get("walkie"), error.args[0])
+                    self.sendErrorResponse(command, walkie, error.args[0], details)
                 return
         except Exception as err:
             print("Unhandled exception occurred ", traceback.print_exc(err))
@@ -146,7 +145,7 @@ class Controller:
         self._driver.send("signOut", session.walkie)
 
 
-    def handleLoginRequest(self, session, message): #Request from walkie
+    def handleLoginRequest(self, session, message):
         
         walkie = message.get("walkie")
         username = message.get("username")
@@ -161,7 +160,7 @@ class Controller:
         self.sendToAuthServer(AUTH_SERVER_MESSAGE.LOGIN, {"walkie": walkie, "username" : username, "password" : password, 'local_server': self._id})
     
 
-    def handleLoginResponse(self, session, message): #Response from auth_server
+    def handleLoginResponse(self, session, message):
         walkie = message.get("walkie")
         
         if message.get("error") is not None:
@@ -173,7 +172,7 @@ class Controller:
         self.sendToWalkie(walkie, WALKIE_MESSAGE.LOGIN, {'token': token})
 
 
-    def handleJoinChannel(self, session, message): #{command: JOIN_CHANNEL, channel: <Id>, session: <Id>}
+    def handleJoinChannel(self, session, message):
         channel = self._db.findChannel(message.get("channel"))
 
         if channel is None:
@@ -271,14 +270,22 @@ class Controller:
             raise Exception(ERROR_CODES.ACCESS_DENIED)
         self.sendToWalkie(session.walkie, WALKIE_MESSAGE.GET_MESSAGE, {'id' : messageId, 'duration' : messageDetails.duration, 'emergency': messageDetails.isEmergency, 'payload': messageDetails.payload, 'timestamp' : messageDetails.timestamp.strftime("%Y-%m-%d %H:%M:%S")})
 
+
+# Session Methods
+
+    def createSession(self, walkie, user):
+        session = Session(walkie, user, self)
+        print("Session created, id: ", walkie)
+        sessionMachine = stmpy.Machine(walkie, SessionStateMachineConfig["transitions"], session, SessionStateMachineConfig["states"])
+        self._driver.add_machine(sessionMachine)
+        self._sessions.append(session)
+        return session
+    
+    def removeSession(self, session):
+        self._sessions.remove(session)
+
 # Helper methods
     
-
-    def ensureValidToken(self, token):
-        if token is None:
-            raise Exception(ERROR_CODES.INVALID_TOKEN)
-        if not self._tpm.validateToken(token):
-            raise Exception(ERROR_CODES.INVALID_TOKEN)
 
     def findSessionFromToken(self, token):
         for session in self._sessions:
@@ -292,28 +299,25 @@ class Controller:
                 return session
         return None
 
-    
-    def sendToAuthServer(self, message_type, message):
-        message["command"] = message_type.value
-        self.sendToMQTT(self.getAuthTopic(), message)
-
-    
-    def sendToMQTT(self, topic, payload):
-        self._mqtt.publish(topic, json.dumps(payload))
-
     def getWalkieTopic(self, walkie):
         return f"{self._rootTopic}/walkie/{walkie}"
 
     def getAuthTopic(self):
         return f"{self._rootTopic}/auth_server"
 
+    def sendToAuthServer(self, message_type, message):
+        message["command"] = message_type.value
+        self.sendToMQTT(self.getAuthTopic(), message)
+    
+    def sendToMQTT(self, topic, payload):
+        self._mqtt.publish(topic, json.dumps(payload))
     def sendToWalkie(self, walkie, message_type, message):
         message["command"] = message_type.value
         self.sendToMQTT(self.getWalkieTopic(walkie), message)
 
 
     def sendErrorResponse(self, type, walkie, error, details):
-        if not isinstance(error, int): #Is not of instance ENUM
+        if not isinstance(error, int): #Is not instance of int ==> instance of ENUM.
             error = error.value
         self.sendToMQTT(self.getWalkieTopic(walkie), {'error': error, 'command' : type, 'details': details})
 
@@ -331,18 +335,11 @@ class Controller:
             if session.status == SESSION_STATUS.AUTHENTICATED and session.userName == username:
                 raise Exception(ERROR_CODES.USER_ALREADY_LOGGED_IN)
     
-
-    
-    def createSession(self, walkie, user):
-        session = Session(walkie, user, self)
-        print("Session created, id: ", walkie)
-        sessionMachine = stmpy.Machine(walkie, SessionStateMachineConfig["transitions"], session, SessionStateMachineConfig["states"])
-        self._driver.add_machine(sessionMachine)
-        self._sessions.append(session)
-        return session
-    
-    def removeSession(self, session):
-        self._sessions.remove(session)
+    def ensureValidToken(self, token):
+        if token is None:
+            raise Exception(ERROR_CODES.INVALID_TOKEN)
+        if not self._tpm.validateToken(token):
+            raise Exception(ERROR_CODES.INVALID_TOKEN)
 
 
 

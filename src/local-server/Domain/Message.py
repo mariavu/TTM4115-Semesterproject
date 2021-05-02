@@ -32,8 +32,3 @@ class Message:
     @property
     def isEmergency(self):
         return self._emergency
-    
-    #from <UserId>
-    #to <ChannelId>
-    #length
-    #contents

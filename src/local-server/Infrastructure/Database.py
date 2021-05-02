@@ -27,7 +27,6 @@ class Database:
         del self._roles[roRemove.id]
         
     def getUsersCount(self):
-       # return self._users.count()
         return len(self._users)
 
     def findChannel(self, channelId):
